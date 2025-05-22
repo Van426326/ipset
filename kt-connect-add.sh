@@ -18,7 +18,7 @@ TEMP_IPSET_CONFIG="/tmp/yuanxin.json.tmp.$$" # Temporary file for ipset config
 trap 'rm -f "$TEMP_SB_CONFIG" "$TEMP_IPSET_CONFIG"' EXIT
 
 # --- Input ---
-read -p "输入医院名称 (例如，南京市儿童医院): " HOSPITAL_NAME
+read -p "输入代理名称 (例如，xxxxxxxxx): " HOSPITAL_NAME
 read -p "输入代理服务器 IP (默认: 192.168.48.153): " PROXY_IP
 # Check if PROXY_IP is empty and set default if needed
 if [ -z "$PROXY_IP" ]; then
@@ -36,7 +36,7 @@ fi
 
 # --- Prepare Data ---
 echo "--- 准备修改配置 ---"
-echo "医院名称: $HOSPITAL_NAME" # Keep full name for internal logs/display if needed
+echo "代理名称: $HOSPITAL_NAME" # Keep full name for internal logs/display if needed
 echo "代理 IP: $PROXY_IP"
 echo "代理端口: $PROXY_PORT"
 echo "IP CIDRs: $IP_CIDRS"
