@@ -7,7 +7,7 @@ CONFIG_FILE="/etc/sing-box/config.json"
 TEMP_SB_CONFIG="/tmp/config.json.tmp.$$" # Temporary file for sing-box config
 
 # Get the directory where the script is located.
-# Based on your new plan, this directory is ~/ipset
+# This directory is expected to be the root of the git repository containing yuanxin.json
 SCRIPT_DIR="$(dirname "$0")"
 # The ipset config file is now directly in the SCRIPT_DIR
 IPSET_FILE="$SCRIPT_DIR/yuanxin.json"
@@ -36,7 +36,7 @@ fi
 
 # --- Prepare Data ---
 echo "--- 准备修改配置 ---"
-echo "医院名称: $HOSPITAL_NAME"
+echo "医院名称: $HOSPITAL_NAME" # Keep full name for internal logs/display if needed
 echo "代理 IP: $PROXY_IP"
 echo "代理端口: $PROXY_PORT"
 echo "IP CIDRs: $IP_CIDRS"
@@ -123,7 +123,6 @@ fi
 
 echo "用修改后的 sing-box 配置替换原文件..."
 # Use sudo mv and check its success
-# --- FIX --- Removed the duplicate 'then' here
 if ! sudo mv "$TEMP_SB_CONFIG" "$CONFIG_FILE"; then
     echo "错误: 替换 sing-box 配置文件失败。"
     exit 1
@@ -164,7 +163,7 @@ fi
 echo "ipset 配置修改成功！"
 
 # --- Git Operations ---
-echo "正在处理 Git 提交..."
+echo "正在处理 Git 提交和推送..."
 
 # Navigate to the script directory to perform git operations
 # This directory now contains yuanxin.json and is the git repo root according to the user's plan
@@ -191,11 +190,16 @@ fi
 
 # Check if there are any changes staged for commit
 if git diff --cached --quiet "$IP_SET_GIT_FILE"; then
-    echo "ipset 文件没有检测到实际改动，跳过 Git 提交。"
+    echo "ipset 文件没有检测到实际改动，跳过 Git 提交和推送。"
 else
-    echo "提交 ipset 文件改动..."
-    # Construct a simple commit message including hospital name
-    COMMIT_MSG="Update yuanxin.json with new CIDRs for ${HOSPITAL_NAME}" # Changed message slightly
+    # Generate a random ID (e.g., a UUID) for the commit message
+    # Requires uuidgen command to be available
+    RANDOM_ID=$(uuidgen 2>/dev/null) || RANDOM_ID="RandomID-$(date +%s%N | sha256sum | base64 | head -c 10)" # Fallback if uuidgen not available
+
+    echo "提交 ipset 文件改动 (使用随机ID: ${RANDOM_ID})..."
+    # Construct the commit message using the random ID
+    COMMIT_MSG="Update yuanxin.json with new CIDRs (ID: ${RANDOM_ID})"
+
     if ! git commit -m "$COMMIT_MSG"; then
         echo "错误: git commit 失败。"
         # Note: commit might fail if user.name/user.email not configured
@@ -203,6 +207,17 @@ else
         exit 1
     fi
     echo "Git 提交成功。"
+
+    echo "正在推送改动到 origin main..."
+    # Perform the git push
+    if ! git push origin main; then
+        echo "警告: git push origin main 失败。可能需要手动处理推送，例如配置 SSH 密钥或输入密码。"
+        # Do not exit immediately here, as sing-box config is already applied.
+        # The push failing is a version control issue, not a service functionality issue.
+    else
+        echo "Git 推送成功。"
+    fi
+
 fi
 
 # Return to the original directory
@@ -234,5 +249,5 @@ else
   exit 1
 fi
 
-# If we reached here, everything was successful
-echo "所有配置修改和 Git 操作完成，sing-box 服务已重启。"
+# If we reached here, everything was successful (ignoring potential push warning)
+echo "所有配置修改、ipset更新和Git操作（提交+推送尝试）完成，sing-box 服务已重启。"
